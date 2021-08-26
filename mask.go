@@ -11,8 +11,9 @@ import (
 )
 
 type Mask struct {
-	Reg       *regexp.Regexp
-	MaxLength int
+	NotMaskReg *regexp.Regexp
+	Reg        *regexp.Regexp
+	MaxLength  int
 }
 
 const maskStar = "***"
@@ -27,10 +28,17 @@ func New(opts ...MaskOption) *Mask {
 	return m
 }
 
-// Sets reg exp option for mask
+// RegExpOption sets reg exp option for mask
 func RegExpOption(reg *regexp.Regexp) MaskOption {
 	return func(m *Mask) {
 		m.Reg = reg
+	}
+}
+
+// NotMaskRegExpOption sets not mask reg exp option for mask
+func NotMaskRegExpOption(reg *regexp.Regexp) MaskOption {
+	return func(m *Mask) {
+		m.NotMaskReg = reg
 	}
 }
 
@@ -64,20 +72,26 @@ func (m *Mask) convert(result *gjson.Result) map[string]interface{} {
 		if isArray {
 			k = strconv.Itoa(index)
 		}
+		index++
+		if m.NotMaskReg != nil && m.NotMaskReg.MatchString(k) {
+			data[k] = value.Value()
+			return true
+		}
 		// 如果能匹配则使用 ***
 		if m.Reg != nil && m.Reg.MatchString(k) {
 			data[k] = maskStar
-		} else if value.IsObject() || value.IsArray() {
-			data[k] = m.convert(&value)
-		} else {
-			// 如果限制最大长度
-			if m.MaxLength != 0 && value.Type == gjson.String {
-				data[k] = m.cutString(value.String())
-			} else {
-				data[k] = value.Value()
-			}
+			return true
 		}
-		index++
+		if value.IsObject() || value.IsArray() {
+			data[k] = m.convert(&value)
+			return true
+		}
+		// 如果限制最大长度
+		if m.MaxLength != 0 && value.Type == gjson.String {
+			data[k] = m.cutString(value.String())
+		} else {
+			data[k] = value.Value()
+		}
 		return true
 	})
 	return data
@@ -97,6 +111,10 @@ func (m *Mask) Struct(data interface{}) (map[string]interface{}, error) {
 func (m *Mask) URLValues(data url.Values) map[string]interface{} {
 	result := make(map[string]interface{})
 	for key, values := range data {
+		if m.NotMaskReg != nil && m.NotMaskReg.MatchString(key) {
+			result[key] = values
+			continue
+		}
 		if m.Reg != nil && m.Reg.MatchString(key) {
 			result[key] = maskStar
 			continue

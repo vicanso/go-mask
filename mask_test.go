@@ -28,7 +28,7 @@ func TestMaskStruct(t *testing.T) {
 	assert := assert.New(t)
 
 	d := data{
-		Name:  "test",
+		Name:  "我的名字测试",
 		Count: 1,
 		ArrPoint: []*subData{
 			{
@@ -65,6 +65,7 @@ func TestMaskStruct(t *testing.T) {
 
 	m := New(
 		RegExpOption(regexp.MustCompile("title")),
+		NotMaskRegExpOption(regexp.MustCompile("name")),
 		MaxLengthOption(4),
 	)
 
@@ -72,7 +73,7 @@ func TestMaskStruct(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(result)
 	buf, _ := json.Marshal(result)
-	assert.Equal(`{"arr":{"0":{"content":"test","max":3,"title":"***"},"1":{"content":"","max":4,"title":"***"}},"arrPoint":{"0":{"content":"Go即将 ... (4 more runes)","max":1,"title":"***"},"1":{"content":"测试","max":2,"title":"***"}},"count":1,"data":{"content":"","max":5,"title":"***"},"dataPoint":{"content":"","max":6,"title":"***"},"name":"test"}`, string(buf))
+	assert.Equal(`{"arr":{"0":{"content":"test","max":3,"title":"***"},"1":{"content":"","max":4,"title":"***"}},"arrPoint":{"0":{"content":"Go即将 ... (4 more runes)","max":1,"title":"***"},"1":{"content":"测试","max":2,"title":"***"}},"count":1,"data":{"content":"","max":5,"title":"***"},"dataPoint":{"content":"","max":6,"title":"***"},"name":"我的名字测试"}`, string(buf))
 }
 
 func TestMaskURLValues(t *testing.T) {
@@ -80,10 +81,14 @@ func TestMaskURLValues(t *testing.T) {
 
 	m := New(
 		RegExpOption(regexp.MustCompile("title")),
+		NotMaskRegExpOption(regexp.MustCompile("name")),
 		MaxLengthOption(4),
 	)
 
 	data := url.Values{
+		"name": {
+			"我的名字测试",
+		},
 		"title": {
 			"1",
 			"2",
@@ -95,7 +100,7 @@ func TestMaskURLValues(t *testing.T) {
 	}
 	result := m.URLValues(data)
 	buf, _ := json.Marshal(result)
-	assert.Equal(`{"category":["测试人员 ... (2 more runes)","cat"],"title":"***"}`, string(buf))
+	assert.Equal(`{"category":["测试人员 ... (2 more runes)","cat"],"name":["我的名字测试"],"title":"***"}`, string(buf))
 }
 
 func BenchmarkMaskStruct(b *testing.B) {
@@ -136,6 +141,7 @@ func BenchmarkMaskStruct(b *testing.B) {
 	}
 	m := New(
 		RegExpOption(regexp.MustCompile("title")),
+		NotMaskRegExpOption(regexp.MustCompile("name")),
 		MaxLengthOption(4),
 	)
 	for i := 0; i < b.N; i++ {
