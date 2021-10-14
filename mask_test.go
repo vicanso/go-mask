@@ -21,6 +21,7 @@ type data struct {
 type subData struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Desc    string `json:"desc"`
 	Max     int    `json:"max"`
 }
 
@@ -35,11 +36,13 @@ func TestMaskStruct(t *testing.T) {
 				Title:   "1",
 				Content: "Go即将支持泛型",
 				Max:     1,
+				Desc:    "string will be cut",
 			},
 			{
 				Title:   "2",
 				Content: "测试",
 				Max:     2,
+				Desc:    "not cut",
 			},
 		},
 		Arr: []subData{
@@ -64,6 +67,13 @@ func TestMaskStruct(t *testing.T) {
 	}
 
 	m := New(
+		CustomMaskOption(regexp.MustCompile("desc"), func(key, value string) string {
+			max := 10
+			if len(value) <= max {
+				return value
+			}
+			return value[0:max] + "..."
+		}),
 		RegExpOption(regexp.MustCompile("title")),
 		NotMaskRegExpOption(regexp.MustCompile("name")),
 		MaxLengthOption(4),
@@ -73,7 +83,7 @@ func TestMaskStruct(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(result)
 	buf, _ := json.Marshal(result)
-	assert.Equal(`{"arr":{"0":{"content":"test","max":3,"title":"***"},"1":{"content":"","max":4,"title":"***"}},"arrPoint":{"0":{"content":"Go即将 ... (4 more runes)","max":1,"title":"***"},"1":{"content":"测试","max":2,"title":"***"}},"count":1,"data":{"content":"","max":5,"title":"***"},"dataPoint":{"content":"","max":6,"title":"***"},"name":"我的名字测试"}`, string(buf))
+	assert.Equal(`{"arr":{"0":{"content":"test","desc":"","max":3,"title":"***"},"1":{"content":"","desc":"","max":4,"title":"***"}},"arrPoint":{"0":{"content":"Go即将 ... (4 more runes)","desc":"string wil...","max":1,"title":"***"},"1":{"content":"测试","desc":"not cut","max":2,"title":"***"}},"count":1,"data":{"content":"","desc":"","max":5,"title":"***"},"dataPoint":{"content":"","desc":"","max":6,"title":"***"},"name":"我的名字测试"}`, string(buf))
 }
 
 func TestMaskURLValues(t *testing.T) {

@@ -10,15 +10,21 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+type CustomMask struct {
+	Reg     *regexp.Regexp
+	Handler MaskHandler
+}
 type Mask struct {
-	NotMaskReg *regexp.Regexp
-	Reg        *regexp.Regexp
-	MaxLength  int
+	NotMaskReg  *regexp.Regexp
+	Reg         *regexp.Regexp
+	MaxLength   int
+	CustomMasks []*CustomMask
 }
 
 const maskStar = "***"
 
 type MaskOption func(*Mask)
+type MaskHandler func(key, value string) string
 
 func New(opts ...MaskOption) *Mask {
 	m := &Mask{}
@@ -28,17 +34,30 @@ func New(opts ...MaskOption) *Mask {
 	return m
 }
 
-// RegExpOption sets reg exp option for mask
+// RegExpOption sets regexp option
 func RegExpOption(reg *regexp.Regexp) MaskOption {
 	return func(m *Mask) {
 		m.Reg = reg
 	}
 }
 
-// NotMaskRegExpOption sets not mask reg exp option for mask
+// NotMaskRegExpOption sets not mask regexp option
 func NotMaskRegExpOption(reg *regexp.Regexp) MaskOption {
 	return func(m *Mask) {
 		m.NotMaskReg = reg
+	}
+}
+
+// CustomMaskOption add custom mask regexp option
+func CustomMaskOption(reg *regexp.Regexp, handler MaskHandler) MaskOption {
+	return func(m *Mask) {
+		if len(m.CustomMasks) == 0 {
+			m.CustomMasks = make([]*CustomMask, 0)
+		}
+		m.CustomMasks = append(m.CustomMasks, &CustomMask{
+			Reg:     reg,
+			Handler: handler,
+		})
 	}
 }
 
@@ -81,6 +100,13 @@ func (m *Mask) convert(result *gjson.Result) map[string]interface{} {
 		if m.Reg != nil && m.Reg.MatchString(k) {
 			data[k] = maskStar
 			return true
+		}
+		for _, customMask := range m.CustomMasks {
+			// 如果符合自定义的mask处理
+			if customMask.Reg.MatchString(k) {
+				data[k] = customMask.Handler(k, value.String())
+				return true
+			}
 		}
 		if value.IsObject() || value.IsArray() {
 			data[k] = m.convert(&value)
