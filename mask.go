@@ -2,10 +2,10 @@ package mask
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 
 	"github.com/tidwall/gjson"
 )
@@ -81,45 +81,50 @@ func (m *Mask) cutString(str string) string {
 	return str
 }
 
-func (m *Mask) convert(result *gjson.Result) map[string]interface{} {
+func (m *Mask) convert(result *gjson.Result) interface{} {
 	data := make(map[string]interface{})
+	arr := make([]interface{}, 0)
 	isArray := result.IsArray()
-	index := 0
+	appendLog := func(key string, value interface{}) {
+		if isArray {
+			arr = append(arr, value)
+		} else {
+			data[key] = value
+		}
+	}
 	result.ForEach(func(key, value gjson.Result) bool {
 		k := key.String()
-		// 如果是数组则k转换为index
-		if isArray {
-			k = strconv.Itoa(index)
-		}
-		index++
 		if m.NotMaskReg != nil && m.NotMaskReg.MatchString(k) {
-			data[k] = value.Value()
+			appendLog(k, value.Value())
 			return true
 		}
 		// 如果能匹配则使用 ***
 		if m.Reg != nil && m.Reg.MatchString(k) {
-			data[k] = maskStar
+			appendLog(k, maskStar)
 			return true
 		}
 		for _, customMask := range m.CustomMasks {
 			// 如果符合自定义的mask处理
 			if customMask.Reg.MatchString(k) {
-				data[k] = customMask.Handler(k, value.String())
+				appendLog(k, customMask.Handler(k, value.String()))
 				return true
 			}
 		}
 		if value.IsObject() || value.IsArray() {
-			data[k] = m.convert(&value)
+			appendLog(k, m.convert(&value))
 			return true
 		}
 		// 如果限制最大长度
 		if m.MaxLength != 0 && value.Type == gjson.String {
-			data[k] = m.cutString(value.String())
+			appendLog(k, m.cutString(value.String()))
 		} else {
-			data[k] = value.Value()
+			appendLog(k, value.Value())
 		}
 		return true
 	})
+	if isArray {
+		return arr
+	}
 	return data
 }
 
@@ -130,7 +135,11 @@ func (m *Mask) Struct(data interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	result := gjson.ParseBytes(buf)
-	return m.convert(&result), nil
+	if result.IsArray() {
+		return nil, errors.New("array is not supported")
+	}
+	tmp, _ := m.convert(&result).(map[string]interface{})
+	return tmp, nil
 }
 
 // URLValues converts url values to map[string]interface{} with mask
