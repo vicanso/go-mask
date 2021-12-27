@@ -34,7 +34,7 @@ func TestMaskStruct(t *testing.T) {
 		ArrPoint: []*subData{
 			{
 				Title:   "1",
-				Content: "Go即将支持泛型",
+				Content: "Go即将支持泛型Go即将支持泛型Go即将支持泛型",
 				Max:     1,
 				Desc:    "string will be cut",
 			},
@@ -83,7 +83,7 @@ func TestMaskStruct(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(result)
 	buf, _ := json.Marshal(result)
-	assert.Equal(`{"arr":[{"content":"test","desc":"","max":3,"title":"***"},{"content":"","desc":"","max":4,"title":"***"}],"arrPoint":[{"content":"Go即将 ... (4 more runes)","desc":"string wil...","max":1,"title":"***"},{"content":"测试","desc":"not cut","max":2,"title":"***"}],"count":1,"data":{"content":"","desc":"","max":5,"title":"***"},"dataPoint":{"content":"","desc":"","max":6,"title":"***"},"name":"我的名字测试"}`, string(buf))
+	assert.Equal(`{"arr":[{"content":"test","desc":"","max":3,"title":"***"},{"content":"","desc":"","max":4,"title":"***"}],"arrPoint":[{"content":"Go\ufffd\ufffd ... (56 more strings)","desc":"string wil...","max":1,"title":"***"},{"content":"测试","desc":"not cut","max":2,"title":"***"}],"count":1,"data":{"content":"","desc":"","max":5,"title":"***"},"dataPoint":{"content":"","desc":"","max":6,"title":"***"},"name":"我的名字测试"}`, string(buf))
 }
 
 func TestMaskURLValues(t *testing.T) {

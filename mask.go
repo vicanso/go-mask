@@ -61,7 +61,7 @@ func CustomMaskOption(reg *regexp.Regexp, handler MaskHandler) MaskOption {
 	}
 }
 
-// Set max string length option for mask, if the length of rune is gt max, it will convert to ...
+// Set max string length option for mask, if the length of rune is gt max, it will convert to %s ... (%d more runes)
 // 0 means no limit.
 func MaxLengthOption(maxLength int) MaskOption {
 	return func(m *Mask) {
@@ -72,6 +72,10 @@ func MaxLengthOption(maxLength int) MaskOption {
 func (m *Mask) cutString(str string) string {
 	if m.MaxLength <= 0 {
 		return str
+	}
+	// 如果超5倍长度，直接截短
+	if len(str) > 5*m.MaxLength {
+		return fmt.Sprintf("%s ... (%d more strings)", str[0:m.MaxLength], len(str)-m.MaxLength)
 	}
 	r := []rune(str)
 	moreRunes := len(r) - m.MaxLength
