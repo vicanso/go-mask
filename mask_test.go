@@ -92,6 +92,10 @@ func TestMaskURLValues(t *testing.T) {
 	m := New(
 		RegExpOption(regexp.MustCompile("title")),
 		NotMaskRegExpOption(regexp.MustCompile("name")),
+		CustomMaskOption(regexp.MustCompile("category"), func(key, value string) string {
+			v := []rune(value)
+			return string(v[0])
+		}),
 		MaxLengthOption(4),
 	)
 
@@ -110,7 +114,7 @@ func TestMaskURLValues(t *testing.T) {
 	}
 	result := m.URLValues(data)
 	buf, _ := json.Marshal(result)
-	assert.Equal(`{"category":["测试人员 ... (2 more runes)","cat"],"name":["我的名字测试"],"title":"***"}`, string(buf))
+	assert.Equal(`{"category":["测","c"],"name":["我的名字测试"],"title":"***"}`, string(buf))
 }
 
 func BenchmarkMaskStruct(b *testing.B) {

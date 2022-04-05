@@ -158,6 +158,23 @@ func (m *Mask) URLValues(data url.Values) map[string]interface{} {
 			result[key] = maskStar
 			continue
 		}
+		matchCustomMask := false
+		for _, customMask := range m.CustomMasks {
+			if customMask.Reg.MatchString(key) {
+				arr := make([]string, len(values))
+				for index, value := range values {
+					arr[index] = customMask.Handler(key, value)
+				}
+				result[key] = arr
+				matchCustomMask = true
+				break
+			}
+		}
+		// 如果已经匹配自定义的mask处理
+		if matchCustomMask {
+			continue
+		}
+
 		arr := make([]string, len(values))
 		for index, value := range values {
 			arr[index] = m.cutString(value)
