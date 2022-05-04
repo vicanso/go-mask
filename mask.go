@@ -74,6 +74,7 @@ func (m *Mask) cutString(str string) string {
 		return str
 	}
 	// 如果超5倍长度，直接截短
+	// 因为如果超长字符串再转换为[]rune，需要占用更多的资源
 	if len(str) > 5*m.MaxLength {
 		return fmt.Sprintf("%s ... (%d more strings)", str[0:m.MaxLength], len(str)-m.MaxLength)
 	}
